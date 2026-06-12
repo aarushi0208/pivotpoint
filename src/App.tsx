@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Compass, 
@@ -22,7 +22,6 @@ import {
   Shield,
   Briefcase
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 
 // --- Types ---
 
@@ -99,6 +98,361 @@ const QUESTIONS: Question[] = [
 
 // --- Components ---
 
+const personalityProfile = (answers: Record<number, string>) => {
+  const counts: Record<string, number> = {
+    structured: 0,
+    creative: 0,
+    analytical: 0,
+    empathetic: 0,
+    social: 0,
+    independent: 0,
+    dynamic: 0,
+    stable: 0,
+    achievement: 0,
+    purpose: 0,
+    intellectual: 0,
+    security: 0,
+  };
+
+  Object.values(answers).forEach((value) => {
+    counts[value] = (counts[value] || 0) + 1;
+  });
+
+  const topSkill = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'balanced';
+  return topSkill;
+};
+
+const createLocalAnalysis = (answers: Record<number, string>, narrative: string): AssessmentResult => {
+  const profile = personalityProfile(answers);
+  const baseNarrative = narrative.toLowerCase();
+  const careerOptions = {
+    structured: [
+      {
+        title: 'Operations Strategy Analyst',
+        description: 'Build systems that turn uncertainty into clear, repeatable outcomes for teams and missions.',
+        whyFits: 'Your disciplined thinking and respect for structure make you ideal for operational planning roles.',
+        salaryRange: '₹6L - ₹12L',
+      },
+      {
+        title: 'Quality Assurance Lead',
+        description: 'Design process guardrails that keep complex projects running smoothly.',
+        whyFits: 'You thrive when applying rules, detail, and consistency to deliver reliable results.',
+        salaryRange: '₹5L - ₹10L',
+      },
+      {
+        title: 'Project Management Specialist',
+        description: 'Coordinate teams around deadlines, risks, and measurable milestones.',
+        whyFits: 'Your methodical approach helps teams stay aligned and focused on outcomes.',
+        salaryRange: '₹7L - ₹14L',
+      },
+    ],
+    creative: [
+      {
+        title: 'Product Design Researcher',
+        description: 'Turn human stories into digital products that feel meaningful and intuitive.',
+        whyFits: 'Your ability to imagine new possibilities and empathize deeply is a strong asset.',
+        salaryRange: '₹6L - ₹13L',
+      },
+      {
+        title: 'Content Experience Planner',
+        description: 'Craft compelling narratives that guide people through change and growth.',
+        whyFits: 'You bring originality and emotional clarity to educational and career stories.',
+        salaryRange: '₹5L - ₹11L',
+      },
+      {
+        title: 'Innovation Operations Coordinator',
+        description: 'Turn creative ideas into practical pilots that prove value fast.',
+        whyFits: 'You can bridge imagination with execution in evolving teams.',
+        salaryRange: '₹6.5L - ₹12L',
+      },
+    ],
+    analytical: [
+      {
+        title: 'Data-Driven Career Strategist',
+        description: 'Use evidence and patterns to recommend the next best move for learners.',
+        whyFits: 'You naturally break problems into data and logical pathways.',
+        salaryRange: '₹7L - ₹15L',
+      },
+      {
+        title: 'Business Intelligence Analyst',
+        description: 'Translate metrics into actionable recommendations for fast-changing teams.',
+        whyFits: 'Your analytical lens helps organizations see what matters most.',
+        salaryRange: '₹8L - ₹16L',
+      },
+      {
+        title: 'Risk Assessment Consultant',
+        description: 'Identify pitfalls and plans to keep projects on track under uncertainty.',
+        whyFits: 'Your logic-focused mindset excels at spotting issues before they become problems.',
+        salaryRange: '₹7L - ₹14L',
+      },
+    ],
+    empathetic: [
+      {
+        title: 'Student Success Coach',
+        description: 'Guide learners through setbacks with empathy-based growth plans.',
+        whyFits: 'You are driven by helping others feel capable and seen.',
+        salaryRange: '₹5L - ₹10L',
+      },
+      {
+        title: 'Community Programs Designer',
+        description: 'Shape supportive experiences for groups that need direction and trust.',
+        whyFits: 'You understand people and can design systems that care for them.',
+        salaryRange: '₹6L - ₹12L',
+      },
+      {
+        title: 'Ethical Product Advisor',
+        description: 'Combine human needs with product strategy to keep solutions grounded.',
+        whyFits: 'Your compassion makes you a strong partner for responsible teams.',
+        salaryRange: '₹7L - ₹13L',
+      },
+    ],
+    social: [
+      {
+        title: 'Partnership Development Lead',
+        description: 'Build bridges between teams, clients, and learning ecosystems.',
+        whyFits: 'You enjoy collaboration and thrive when interacting with many stakeholders.',
+        salaryRange: '₹7L - ₹14L',
+      },
+      {
+        title: 'Community Growth Strategist',
+        description: 'Design and scale experiences that bring people together around purpose.',
+        whyFits: 'Your social energy helps communities feel energised and connected.',
+        salaryRange: '₹6L - ₹13L',
+      },
+      {
+        title: 'People Operations Specialist',
+        description: 'Help teams perform better by improving communication and support systems.',
+        whyFits: 'You are motivated by people and effective ways to help them succeed.',
+        salaryRange: '₹7L - ₹12L',
+      },
+    ],
+    independent: [
+      {
+        title: 'Freelance Digital Consultant',
+        description: 'Help startups and students pivot with focused, self-directed support.',
+        whyFits: 'You are comfortable owning work and steering it independently.',
+        salaryRange: '₹5L - ₹11L',
+      },
+      {
+        title: 'Remote Research Specialist',
+        description: 'Deliver in-depth insights while working autonomously across teams.',
+        whyFits: 'You prefer quiet, focused environments and self-paced progress.',
+        salaryRange: '₹6L - ₹12L',
+      },
+      {
+        title: 'Technical Content Author',
+        description: 'Create structured learning materials, guides, and roadmaps from home.',
+        whyFits: 'You bring independent discipline to long-form, high-value work.',
+        salaryRange: '₹6L - ₹11L',
+      },
+    ],
+    dynamic: [
+      {
+        title: 'Operations Growth Specialist',
+        description: 'Move fast and keep complex team projects aligned as they scale.',
+        whyFits: 'You love high-energy settings and responding quickly to change.',
+        salaryRange: '₹8L - ₹15L',
+      },
+      {
+        title: 'Product Launch Coordinator',
+        description: 'Help new initiatives ship with speed, precision, and adaptability.',
+        whyFits: 'Your energy fits roles that need fast, smart execution.',
+        salaryRange: '₹7.5L - ₹14L',
+      },
+      {
+        title: 'Growth Operations Partner',
+        description: 'Support teams through rapid expansion with practical systems.',
+        whyFits: 'You thrive when solving hard problems under tight timelines.',
+        salaryRange: '₹8L - ₹16L',
+      },
+    ],
+    stable: [
+      {
+        title: 'Compliance Program Analyst',
+        description: 'Create dependable systems that keep businesses steady and secure.',
+        whyFits: 'You prefer environments with consistency and well-defined expectations.',
+        salaryRange: '₹6L - ₹13L',
+      },
+      {
+        title: 'Operations Support Specialist',
+        description: 'Make processes reliable for teams that depend on consistency.',
+        whyFits: 'Your steady mindset is a strong fit for support-focused roles.',
+        salaryRange: '₹5.5L - ₹11L',
+      },
+      {
+        title: 'Data Validation Coordinator',
+        description: 'Ensure information is accurate and ready for confident decision-making.',
+        whyFits: 'You are at your best when keeping workflows stable and orderly.',
+        salaryRange: '₹6L - ₹12L',
+      },
+    ],
+    achievement: [
+      {
+        title: 'Competitive Operations Lead',
+        description: 'Drive teams toward measurable wins and sharpened performance.',
+        whyFits: 'You want work that rewards success and visible impact.',
+        salaryRange: '₹8L - ₹16L',
+      },
+      {
+        title: 'Sales Enablement Analyst',
+        description: 'Create tools and training that boost performance across teams.',
+        whyFits: 'You enjoy building systems that help people win consistently.',
+        salaryRange: '₹7L - ₹14L',
+      },
+      {
+        title: 'Performance Operations Strategist',
+        description: 'Design frameworks for achieving ambitious goals reliably.',
+        whyFits: 'Your drive for achievement makes you a natural match for growth roles.',
+        salaryRange: '₹8L - ₹15L',
+      },
+    ],
+    purpose: [
+      {
+        title: 'Impact Program Coordinator',
+        description: 'Shape programs that make a measurable difference in people’s lives.',
+        whyFits: 'You want work that feels meaningful and connected to others.',
+        salaryRange: '₹6L - ₹13L',
+      },
+      {
+        title: 'Learning Experience Designer',
+        description: 'Build journeys that help students grow through real-world skill building.',
+        whyFits: 'Your work is driven by helping others develop and thrive.',
+        salaryRange: '₹7L - ₹14L',
+      },
+      {
+        title: 'Talent Development Analyst',
+        description: 'Create systems that support people as they discover their strongest paths.',
+        whyFits: 'You’re motivated by supporting progress and purpose in others.',
+        salaryRange: '₹7L - ₹14L',
+      },
+    ],
+    intellectual: [
+      {
+        title: 'Strategy Research Analyst',
+        description: 'Dig into problems and deliver insight-driven recommendations.',
+        whyFits: 'You enjoy solving puzzles with evidence and careful reasoning.',
+        salaryRange: '₹7L - ₹15L',
+      },
+      {
+        title: 'Technical Writer',
+        description: 'Explain complex systems clearly for teams and learners.',
+        whyFits: 'Your curiosity and precision make you an effective communicator.',
+        salaryRange: '₹6L - ₹12L',
+      },
+      {
+        title: 'Market Insight Specialist',
+        description: 'Use research to uncover the next strategic opportunity.',
+        whyFits: 'You’re naturally drawn to thoughtful, evidence-based work.',
+        salaryRange: '₹7L - ₹14L',
+      },
+    ],
+    security: [
+      {
+        title: 'Risk Management Coordinator',
+        description: 'Find and mitigate the risks that keep projects stable and trusted.',
+        whyFits: 'You value safety, preparation, and reliable outcomes.',
+        salaryRange: '₹6L - ₹13L',
+      },
+      {
+        title: 'Compliance Operations Analyst',
+        description: 'Create dependable controls that keep teams aligned and compliant.',
+        whyFits: 'Your careful, steady approach is ideal for stability-focused work.',
+        salaryRange: '₹6.5L - ₹13L',
+      },
+      {
+        title: 'Workflow Integrity Specialist',
+        description: 'Keep processes consistent and error-free through strong checks.',
+        whyFits: 'You are strongest when helping teams avoid costly mistakes.',
+        salaryRange: '₹5.5L - ₹12L',
+      },
+    ],
+  };
+
+  const selected = careerOptions[profile] ?? careerOptions.analytical;
+  const topCareers = selected.slice(0, 3);
+
+  const legacyVault: LegacySkill[] = [
+    {
+      oldSkill: baseNarrative.includes('army') || baseNarrative.includes('soldier') ? 'Discipline under pressure' : 'Focused execution',
+      newApplication: baseNarrative.includes('army') || baseNarrative.includes('soldier')
+        ? 'Use your high-pressure focus to lead operations or quality initiatives.'
+        : 'Turn your ability to execute complex plans into process-driven roles.',
+      icon: 'shield',
+    },
+    {
+      oldSkill: baseNarrative.includes('pilot') || baseNarrative.includes('aviation') ? 'Spatial precision' : 'Strategic problem solving',
+      newApplication: baseNarrative.includes('pilot') || baseNarrative.includes('aviation')
+        ? 'Apply precise planning to logistics, research, or product operations.'
+        : 'Use your ability to break problems down into clear steps for growth roles.',
+      icon: 'target',
+    },
+    {
+      oldSkill: baseNarrative.includes('failed') || baseNarrative.includes('exam') ? 'Resilience after setbacks' : 'Learning from experience',
+      newApplication: baseNarrative.includes('failed') || baseNarrative.includes('exam')
+        ? 'Channel your resilience into coaching, training, or operations recovery roles.'
+        : 'Use your hard-earned lessons to support others facing transition.',
+      icon: 'heart',
+    },
+  ];
+
+  return { topCareers, legacyVault };
+};
+
+const createLocalRoadmap = (career: Career, narrative: string): DetailedRoadmap => {
+  const isAnalytical = career.title.toLowerCase().includes('analyst') || career.title.toLowerCase().includes('strategist');
+  const isCreative = career.title.toLowerCase().includes('designer') || career.title.toLowerCase().includes('creative');
+  const isSupport = career.title.toLowerCase().includes('coach') || career.title.toLowerCase().includes('community');
+
+  const baseSteps: RoadmapStep[] = [
+    {
+      step: 'Clarify the new direction',
+      timeline: 'Month 1',
+      action: `Define what success looks like in ${career.title} and map your current strengths to that path.`,
+    },
+    {
+      step: 'Build relevant skills',
+      timeline: 'Month 2-3',
+      action: `Learn one core tool or framework used by ${career.title} professionals and practice it on a real example.`,
+    },
+    {
+      step: 'Create a showcase',
+      timeline: 'Month 3-4',
+      action: `Develop a portfolio item or case study that reflects the mindset behind ${career.title}.`,
+    },
+    {
+      step: 'Network with purpose',
+      timeline: 'Month 4-5',
+      action: `Reach out to people already doing similar work and ask for feedback on your new direction.`,
+    },
+    {
+      step: 'Gain practical momentum',
+      timeline: 'Month 5',
+      action: `Volunteer, freelance, or contribute to a project that directly uses your new skills.`,
+    },
+    {
+      step: 'Launch your pivot',
+      timeline: 'Month 6',
+      action: `Turn your learning and experience into a clear next step: an application, a pilot, or a portfolio review.`,
+    },
+  ];
+
+  let mentorAdvice = 'Stay curious and keep building momentum by turning every setback into a stronger next step.';
+
+  if (isAnalytical) {
+    mentorAdvice = 'Leverage your logical strength to build confidence through repeatable systems and measurable progress.';
+  } else if (isCreative) {
+    mentorAdvice = 'Trust your curiosity and keep iterating until your ideas land in a concrete, valuable way.';
+  } else if (isSupport) {
+    mentorAdvice = 'Your empathy is a superpower; use it to connect your story to the people you want to help.';
+  }
+
+  return {
+    careerTitle: career.title,
+    steps: baseSteps,
+    mentorAdvice,
+  };
+};
+
 export default function App() {
   const [step, setStep] = useState<'welcome' | 'test' | 'narrative' | 'loading_analysis' | 'results' | 'loading_roadmap' | 'final_path'>('welcome');
   const [answers, setAnswers] = useState<Record<number, string>>({});
@@ -107,15 +461,6 @@ export default function App() {
   const [selectedCareer, setSelectedCareer] = useState<Career | null>(null);
   const [detailedRoadmap, setDetailedRoadmap] = useState<DetailedRoadmap | null>(null);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-
-  const aiRef = useRef<GoogleGenAI | null>(null);
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
-
-  useEffect(() => {
-    if (apiKey) {
-      aiRef.current = new GoogleGenAI({ apiKey });
-    }
-  }, [apiKey]);
 
   const handleNextStep = () => {
     if (step === 'welcome') setStep('test');
@@ -130,138 +475,21 @@ export default function App() {
     }
   };
 
-  const startAnalysis = async () => {
+  const startAnalysis = () => {
     setStep('loading_analysis');
-    
-    if (!aiRef.current) {
-      console.error("Gemini API key missing");
-      alert("AI Configuration missing. Please check your environment variables.");
-      setStep('narrative');
-      return;
-    }
 
-    const testAnswersSummary = Object.entries(answers)
-      .map(([id, val]) => `Q${id}: ${val}`)
-      .join(', ');
-
-    const userPrompt = `
-      Personality Profile: ${testAnswersSummary}
-      Student's Story/Scenario: "${narrative}"
-    `;
-
-    try {
-      const response = await aiRef.current.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: userPrompt,
-        config: {
-          systemInstruction: `
-            Act as a world-class career counselor and psychologist.
-            First, extract the "Legacy Vault": mapping 3 skills from their previous/lost dream to new potential uses.
-            Then, propose 3 modern, high-potential career options that fit their profile.
-            
-            IMPORTANT: The "Legacy Vault" is the core emotional hook. If they failed NDA, focus on discipline and strategic thinking. If they missed pilot school, focus on spatial awareness and precision.
-            Be compassionate but strategic.
-          `,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              topCareers: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
-                    whyFits: { type: Type.STRING },
-                    salaryRange: { type: Type.STRING }
-                  },
-                  required: ["title", "description", "whyFits", "salaryRange"]
-                }
-              },
-              legacyVault: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    oldSkill: { type: Type.STRING },
-                    newApplication: { type: Type.STRING },
-                    icon: { type: Type.STRING, description: "A keyword for a Lucide icon: target, shield, zap, trophy, heart" }
-                  },
-                  required: ["oldSkill", "newApplication", "icon"]
-                }
-              }
-            },
-            required: ["topCareers", "legacyVault"]
-          }
-        }
-      });
-
-      const data = JSON.parse(response.text || '{}');
-      setAnalysis(data);
-      setStep('results');
-    } catch (error) {
-      console.error("Analysis failed", error);
-      alert("Something went wrong with the AI analysis. Please try again.");
-      setStep('narrative');
-    }
+    const localAnalysis = createLocalAnalysis(answers, narrative);
+    setAnalysis(localAnalysis);
+    setStep('results');
   };
 
-  const generateDedicatedPathway = async (career: Career) => {
+  const generateDedicatedPathway = (career: Career) => {
     setSelectedCareer(career);
     setStep('loading_roadmap');
-    
-    if (!aiRef.current) return;
 
-    const context = `
-      Selected career: ${career.title}
-      Reasoning: ${career.whyFits}
-      Student's background: ${narrative}
-    `;
-
-    try {
-      const response = await aiRef.current.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: context,
-        config: {
-          systemInstruction: `
-            Create a detailed, actionable 6-month roadmap for a student pivoting to ${career.title}.
-            Provide specific steps, timelines, and a piece of expert "Mentor Advice" to keep them motivated.
-            The roadmap should be realistic and broken down month-by-month into exact actions.
-          `,
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              careerTitle: { type: Type.STRING },
-              steps: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    step: { type: Type.STRING },
-                    timeline: { type: Type.STRING },
-                    action: { type: Type.STRING }
-                  },
-                  required: ["step", "timeline", "action"]
-                }
-              },
-              mentorAdvice: { type: Type.STRING }
-            },
-            required: ["careerTitle", "steps", "mentorAdvice"]
-          }
-        }
-      });
-
-      const data = JSON.parse(response.text || '{}');
-      setDetailedRoadmap(data);
-      setStep('final_path');
-    } catch (error) {
-      console.error("Roadmap generation failed", error);
-      // Removed alert to use a more graceful fallback if needed, but for now we reset step
-      setStep('results');
-      alert("The roadmap generator hit a snag. Please select the career path again to retry.");
-    }
+    const roadmap = createLocalRoadmap(career, narrative);
+    setDetailedRoadmap(roadmap);
+    setStep('final_path');
   };
 
   return (
